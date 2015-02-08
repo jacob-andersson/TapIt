@@ -1,22 +1,30 @@
 //
-//  AppDelegate.m
+//  JAAppDelegate.m
 //  Tap It!
 //
 //  Created by Jacob Andersson on 07/02/15.
 //  Copyright (c) 2015 Jacob Andersson. All rights reserved.
 //
 
-#import "AppDelegate.h"
+#import "JAAppDelegate.h"
+#import "JAMainViewController.h"
 
-@interface AppDelegate ()
+@interface JAAppDelegate ()
 
 @end
 
-@implementation AppDelegate
+@implementation JAAppDelegate
 
 
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
     // Override point for customization after application launch.
+    self.window = [[UIWindow alloc] initWithFrame:[[UIScreen mainScreen] bounds]];
+    
+    JAMainViewController *mainView = [JAMainViewController new];
+    self.window.rootViewController = mainView;
+        
+    [self.window makeKeyAndVisible];
+    
     return YES;
 }
 

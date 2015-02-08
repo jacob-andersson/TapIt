@@ -1,5 +1,5 @@
 //
-//  ViewController.h
+//  JAAppDelegate.h
 //  Tap It!
 //
 //  Created by Jacob Andersson on 07/02/15.
@@ -8,8 +8,9 @@
 
 #import <UIKit/UIKit.h>
 
-@interface ViewController : UIViewController
+@interface JAAppDelegate : UIResponder <UIApplicationDelegate>
 
+@property (strong, nonatomic) UIWindow *window;
 
 @end
 
