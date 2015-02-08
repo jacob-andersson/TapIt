@@ -11,6 +11,15 @@
 
 @implementation JATile
 
+- (instancetype) initTileWithVariant:(TileVariant) variant
+{
+    self = [super init];
+    if (self) {
+        self.variant = variant;
+    }
+    return self;
+}
+
 + (NSArray *) gradientColorsForTileVariant:(TileVariant) variant
 {
     NSArray * gradientColors;

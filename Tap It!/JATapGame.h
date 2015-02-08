@@ -15,13 +15,13 @@ static int const kTapGameNrOfTileVariants = 3;
 typedef NS_ENUM(NSInteger, GameEvent) {
     GameEventStart,
     GameEventStop,
-    GameEventTime,
+    GameEventTimeTick,
     GameEventLoadHighScore,
     GameEventNewHighScore,
-    GameEventCurrentColor,
-    GameEventInitTiles,
-    GameEventShuffleTiles,
-    GameEventDisableButton
+    GameEventNewTileVariant,
+    GameEventTilesReady,
+    GameEventTilesShuffled,
+    GameEventTileTapped
 };
 
 typedef NS_ENUM(NSInteger, GameMode) {
@@ -32,9 +32,8 @@ typedef NS_ENUM(NSInteger, GameMode) {
 @interface JATapGame : NSObject
 
 - (void) toggleGameState;
-
 - (void) toggleGameMode;
-
 - (void) tileTapped:(NSUInteger)index;
+- (void) stopGame;
 
 @end

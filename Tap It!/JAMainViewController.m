@@ -23,7 +23,7 @@ static NSString * const kCellIdentifier = @"kTileGridCell";
 @property (nonatomic, strong) UILabel *currentTimeLabel;
 @property (nonatomic, strong) UILabel *highScoreLabel;
 @property (nonatomic, strong) UIView *tapColorView;
-@property (nonatomic, strong) CAGradientLayer *tapColorGradient;
+@property (nonatomic, strong) CAGradientLayer *tileVariantGradient;
 @property (nonatomic, strong) UISegmentedControl *gameModePicker;
 
 @end
@@ -36,20 +36,23 @@ static NSString * const kCellIdentifier = @"kTileGridCell";
     
     self.view.backgroundColor = [UIColor mainViewBackgroundColor];
     
-    //Register as listener (listen to updates from the game model) and create game instance
-    [self registerForNotifications];
-    self.gameModel = [JATapGame new];
+    //Listen to updates from game model, take care of updates in method modelUpdated
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(modelUpdated:) name:kTapGameUpdateEvent object:nil];
     
-    self.tiles = [[NSMutableArray alloc] initWithCapacity:kTapGameNrOfTiles];
-    for (int i = 0; i < kTapGameNrOfTiles; i++) {
-        JATile *tile = [JATile new];
-        tile.variant = TileVariantTapped;
-        [self.tiles addObject:tile];
-    }
+    self.gameModel = [JATapGame new];
     
     UIView *topPanel = [UIView new];
     topPanel.translatesAutoresizingMaskIntoConstraints = false;
     topPanel.backgroundColor = [UIColor topPanelBackgroundColor];
+    
+    UIView *gridPanel = [UIView new];
+    gridPanel.translatesAutoresizingMaskIntoConstraints = false;
+    [gridPanel.layer addSublayer:[JAMainViewController shadowGradientForFrame:self.view.bounds]];
+    
+    UIView *bottomPanel = [UIView new];
+    bottomPanel.translatesAutoresizingMaskIntoConstraints = false;
+    bottomPanel.backgroundColor = [UIColor bottomPanelBackgroundColor];
+    [bottomPanel.layer addSublayer:[JAMainViewController shadowGradientForFrame:self.view.bounds]];
     
     UILabel *timeLabel = [UILabel new];
     timeLabel.translatesAutoresizingMaskIntoConstraints = false;
@@ -67,32 +70,22 @@ static NSString * const kCellIdentifier = @"kTileGridCell";
     self.tapColorView.layer.borderWidth = 1.0;
     self.tapColorView.layer.masksToBounds = YES;
     
-    self.tapColorGradient = [CAGradientLayer layer];
-    self.tapColorGradient.colors = [JATile gradientColorsForTileVariant:TileVariantTapped];
-    [self.tapColorView.layer addSublayer:self.tapColorGradient];
-    
-    UIView *gridPanel = [UIView new];
-    gridPanel.translatesAutoresizingMaskIntoConstraints = false;
-    [gridPanel.layer insertSublayer:[JAMainViewController shadowGradientForFrame:self.view.bounds] atIndex:0];
+    self.tileVariantGradient = [CAGradientLayer layer];
+    self.tileVariantGradient.colors = [JATile gradientColorsForTileVariant:TileVariantTapped];
+    [self.tapColorView.layer addSublayer:self.tileVariantGradient];
     
     UICollectionViewFlowLayout * flowLayout = [[UICollectionViewFlowLayout alloc] init];
     flowLayout.itemSize = CGSizeMake(90.0, 90.0);
     flowLayout.minimumInteritemSpacing = 10;
     flowLayout.minimumLineSpacing = 10;
+    
     self.tileGrid = [[UICollectionView alloc] initWithFrame:CGRectZero collectionViewLayout:flowLayout];
+    [self.tileGrid registerClass:JATileGridCollectionViewCell.class forCellWithReuseIdentifier:kCellIdentifier];
     self.tileGrid.dataSource = self;
     self.tileGrid.delegate = self;
-    
-    [self.tileGrid registerClass:JATileGridCollectionViewCell.class forCellWithReuseIdentifier:kCellIdentifier];
     self.tileGrid.translatesAutoresizingMaskIntoConstraints = false;
     self.tileGrid.backgroundColor = [UIColor clearColor];
-    
     [self.tileGrid.viewForBaselineLayout.layer setSpeed:1.5f];
-    
-    UIView *bottomPanel = [UIView new];
-    bottomPanel.translatesAutoresizingMaskIntoConstraints = false;
-    bottomPanel.backgroundColor = [UIColor bottomPanelBackgroundColor];
-    [bottomPanel.layer addSublayer:[JAMainViewController shadowGradientForFrame:self.view.bounds]];
     
     self.gameModePicker = [[UISegmentedControl alloc] initWithItems:@[@"Newbie", @"Pro"]];
     self.gameModePicker.translatesAutoresizingMaskIntoConstraints = false;
@@ -235,22 +228,34 @@ static NSString * const kCellIdentifier = @"kTileGridCell";
                                   attribute:NSLayoutAttributeCenterY
                                  multiplier:1.0
                                    constant:30]];
-    
 }
 
 - (void) viewDidAppear:(BOOL)animated
 {
     [super viewDidAppear:animated];
     
-    if (CGRectEqualToRect(self.tapColorGradient.frame, CGRectZero)) {
-        self.tapColorGradient.frame = self.tapColorView.bounds;
+    if (CGRectEqualToRect(self.tileVariantGradient.frame, CGRectZero)) {
+        self.tileVariantGradient.frame = self.tapColorView.bounds;
     }
 }
 
-- (UIStatusBarStyle) preferredStatusBarStyle {
+- (void) viewDidDisappear:(BOOL)animated
+{
+    [super viewDidDisappear:animated];
+    
+    //Make sure timers are invalidated when view goes away
+    [self.gameModel stopGame];
+}
+
+- (UIStatusBarStyle) preferredStatusBarStyle
+{
     return UIStatusBarStyleLightContent;
 }
 
+- (void) dealloc
+{
+    [[NSNotificationCenter defaultCenter] removeObserver:self];
+}
 
 #pragma mark - Private methods
 
@@ -264,18 +269,12 @@ static NSString * const kCellIdentifier = @"kTileGridCell";
     [self.gameModel toggleGameMode];
 }
 
-- (void) registerForNotifications
-{
-    //Listen to updates from game model, take care of updates in method modelUpdated
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(modelUpdated:) name:kTapGameUpdateEvent object:nil];
-}
-
 - (void) modelUpdated:(NSNotification *) notification
 {
-    //Update received from game model
     NSDictionary *info = [notification userInfo];
     NSEnumerator *enumerator = [info keyEnumerator];
     id key;
+    
     //Iterate over all keys in the NSDictionary sent by the game model
     while ((key = [enumerator nextObject])) {
         id message = [info objectForKey:key];
@@ -290,7 +289,7 @@ static NSString * const kCellIdentifier = @"kTileGridCell";
                 [self.gameModePicker setEnabled:true];
                 [self updateStartStopButtonTitle:message];
                 break;
-            case GameEventTime:
+            case GameEventTimeTick:
                 [self updateTime:message];
                 break;
             case GameEventLoadHighScore:
@@ -299,23 +298,21 @@ static NSString * const kCellIdentifier = @"kTileGridCell";
             case GameEventNewHighScore:
                 [self updateHighScore:message alert:true];
                 break;
-            case GameEventCurrentColor:
-                [self updateCurrentColor:message];
+            case GameEventNewTileVariant:
+                [self updateCurrentTileVariant:message];
                 break;
-            case GameEventInitTiles:
-                [self.tiles removeAllObjects];
-                [self.tiles addObjectsFromArray:message];
+            case GameEventTilesReady:
+                self.tiles = [NSMutableArray arrayWithArray:message];
                 [self.tileGrid reloadData];
                 break;
-            case GameEventShuffleTiles:
+            case GameEventTilesShuffled:
                 [self shuffleTiles:message];
                 break;
-            case GameEventDisableButton:
-                [self disableButton:message];
+            case GameEventTileTapped:
+                [self tileTappedAtIndex:message];
                 break;
             default:
-                NSLog(@"Something went wrong!");
-                //Possible termination of program here
+                NSLog(@"Too bad, something went wrong o_O");
                 break;
         }
     }
@@ -326,7 +323,7 @@ static NSString * const kCellIdentifier = @"kTileGridCell";
     self.highScoreLabel.text = highScore;
     
     if (alert) {
-        [[[UIAlertView alloc] initWithTitle:@"o_O"
+        [[[UIAlertView alloc] initWithTitle:@"^^"
                                     message:@"High Score!"
                                    delegate:nil
                           cancelButtonTitle:@"Hell yeah!"
@@ -337,9 +334,10 @@ static NSString * const kCellIdentifier = @"kTileGridCell";
 - (void) shuffleTiles:(NSArray *) shuffledTiles
 {
     [self.tileGrid performBatchUpdates:^{
-        NSArray *oldTiles = [NSArray arrayWithArray:self.tiles];
+        NSArray *oldTiles = self.tiles.copy;
         [self.tiles removeAllObjects];
         [self.tiles addObjectsFromArray:shuffledTiles];
+        
         for (NSInteger i = 0; i < oldTiles.count; i++) {
             NSIndexPath *fromIndexPath = [NSIndexPath indexPathForItem:i inSection:0];
             NSInteger j = [self.tiles indexOfObject:oldTiles[i]];
@@ -349,12 +347,12 @@ static NSString * const kCellIdentifier = @"kTileGridCell";
     } completion:nil];
 }
 
-- (void) updateCurrentColor:(NSNumber *) tileVariant
+- (void) updateCurrentTileVariant:(NSNumber *) tileVariant
 {
-    self.tapColorGradient.colors = [JATile gradientColorsForTileVariant:tileVariant.intValue];
+    self.tileVariantGradient.colors = [JATile gradientColorsForTileVariant:tileVariant.intValue];
 }
 
-- (void) disableButton:(NSNumber *) index
+- (void) tileTappedAtIndex:(NSNumber *) index
 {
     JATile *tile = self.tiles[index.intValue];
     tile.tapped = YES;
@@ -372,11 +370,11 @@ static NSString * const kCellIdentifier = @"kTileGridCell";
 }
 
 
-#pragma mark - UICollectionViewDelegate / DataSource methods
+#pragma mark - UICollectionViewDelegate/UICollectionViewDataSource methods
 
 - (NSInteger) collectionView:(UICollectionView *) collectionView numberOfItemsInSection:(NSInteger) section
 {
-    return kTapGameNrOfTiles;
+    return self.tiles.count;
 }
 
 - (UICollectionViewCell *) collectionView:(UICollectionView *) collectionView cellForItemAtIndexPath:(NSIndexPath *) indexPath
@@ -393,10 +391,13 @@ static NSString * const kCellIdentifier = @"kTileGridCell";
     [self.gameModel tileTapped:indexPath.item];
 }
 
+
+#pragma mark - Static helper methods
+
 + (CAGradientLayer *) shadowGradientForFrame:(CGRect) frame
 {
     CAGradientLayer *shadowGradient = [CAGradientLayer layer];
-    shadowGradient.frame = frame;
+    shadowGradient.frame = CGRectMake(0, 0, frame.size.width, 10);
     shadowGradient.colors = @[(id)[UIColor colorWithWhite:0.0 alpha:0.25f].CGColor, (id)[UIColor clearColor].CGColor];
     return shadowGradient;
 }

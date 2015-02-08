@@ -11,31 +11,36 @@
 
 @interface JATapGame ()
 
+@property (nonatomic, readonly) NSArray *immutableTiles;
 @property (nonatomic, strong) NSMutableArray *tiles;
-@property (nonatomic, strong) NSMutableArray *tappedTiles;
 @property (nonatomic, strong) NSTimer *gameTimer;
 @property (nonatomic, strong) NSTimer *shuffleTimer;
-@property (nonatomic) GameMode activeGameMode;
-@property (nonatomic) TileVariant currentTileVariant;
-@property (nonatomic) BOOL isGameRunning;
-@property (nonatomic) int currentHighScore;
-@property (nonatomic) int elapsedTime;
-@property (nonatomic) int nrOfTappedTiles;
+@property (nonatomic, assign) GameMode activeGameMode;
+@property (nonatomic, assign) TileVariant currentTileVariant;
+@property (nonatomic, assign) BOOL isGameRunning;
+@property (nonatomic, assign) int currentHighScore;
+@property (nonatomic, assign) int elapsedTime;
+@property (nonatomic, assign) int nrOfTappedTiles;
 
 @end
 
 @implementation JATapGame
 
-- (instancetype) init {
+- (instancetype) init
+{
     self = [super init];
     if (self) {
         self.isGameRunning = false;
         self.elapsedTime = 0;
         self.activeGameMode = GameModeEasy;
         self.nrOfTappedTiles = 0;
-        self.tiles = [NSMutableArray arrayWithCapacity:kTapGameNrOfTiles];
         self.gameTimer = [[NSTimer alloc] init];
         self.shuffleTimer = [[NSTimer alloc] init];
+        self.tiles = [NSMutableArray arrayWithCapacity:kTapGameNrOfTiles];
+        
+        //Make sure placeholder tiles are shown before user starts a game
+        [self initPlaceholderTiles];
+        [self notifyControllerOfUpdate:GameEventTilesReady withObject:self.immutableTiles];
         
         if (self.currentHighScore != 0) {
             [self notifyControllerOfUpdate:GameEventLoadHighScore withObject:[self displayTime:self.currentHighScore]];
@@ -46,18 +51,21 @@
 
 #pragma mark - Public metods
 
-- (void) tileTapped:(NSUInteger) index {
+- (void) tileTapped:(NSUInteger) index
+{
     if (self.isGameRunning) {
         
         //Only do something if a button with correct color was pressed
-        JATile * tile = [self.tiles objectAtIndex:index];
+        JATile * tile = self.tiles[index];
         if (self.currentTileVariant == tile.variant && !tile.isTapped) {
             tile.variant = TileVariantTapped;
             self.nrOfTappedTiles += 1;
-            [self notifyControllerOfUpdate:GameEventDisableButton withObject:[NSNumber numberWithInteger:index]];
+            
+            //Valid tap updated model, time to propagate the update
+            [self notifyControllerOfUpdate:GameEventTileTapped withObject:[NSNumber numberWithInteger:index]];
             
             //End game and check highscore if the last button of the correct color was pressed
-            if (self.nrOfTappedTiles == 3) {
+            if (self.nrOfTappedTiles == kTapGameNrOfTileVariants) {
                 int gameTime = self.elapsedTime;
                 [self stopGame];
                 [self checkHighScore: gameTime];
@@ -66,7 +74,8 @@
     }
 }
 
-- (void) toggleGameState {
+- (void) toggleGameState
+{
     if (self.isGameRunning) {
         [self stopGame];
     } else {
@@ -74,13 +83,24 @@
     }
 }
 
-- (void) toggleGameMode {
+- (void) toggleGameMode
+{
     self.activeGameMode = self.activeGameMode == GameModeEasy ? GameModeHard : GameModeEasy;
     NSString *message = [self displayTime:self.currentHighScore];
     [self notifyControllerOfUpdate:GameEventLoadHighScore withObject:message];
 }
 
+
 #pragma mark - Private metods
+
+- (NSArray *) immutableTiles
+{
+    if (self.tiles) {
+        return self.tiles.copy;
+    }
+    
+    return nil;
+}
 
 - (int) currentHighScore
 {
@@ -88,36 +108,50 @@
     return 0;
 }
 
-- (void) initTilesArray {
-    [self.tiles removeAllObjects];
+- (void) initPlaceholderTiles
+{
     for (int i = 0; i < kTapGameNrOfTiles; i++) {
-        JATile * tile = [JATile new];
-        tile.variant = i%kTapGameNrOfTileVariants;
+        JATile *tile = [[JATile alloc] initTileWithVariant:TileVariantTapped];
         [self.tiles addObject:tile];
     }
+}
+
+- (void) refreshTilesArray
+{
+    for (int i = 0; i < kTapGameNrOfTiles; i++) {
+        JATile *tile = self.tiles[i];
+        tile.variant = i%kTapGameNrOfTileVariants;
+        tile.tapped = NO;
+    }
+    
+    [self shuffleTiles];
 }
 
 - (void) startGame
 {
     [self decideTileVariant];
-    [self initTilesArray];
-    [self shuffleTiles];
+    [self refreshTilesArray];
     
-    self.gameTimer = [NSTimer scheduledTimerWithTimeInterval:0.1 target:self selector:@selector(clockEvent) userInfo:nil repeats:YES];
+    self.gameTimer = [NSTimer scheduledTimerWithTimeInterval:0.1
+                                                      target:self
+                                                    selector:@selector(clockEvent)
+                                                    userInfo:nil
+                                                     repeats:YES];
     
     //When game mode is set to hard, start another timer (used to re-shuffle the buttons)
     if (self.activeGameMode == GameModeHard) {
-        self.shuffleTimer = [NSTimer scheduledTimerWithTimeInterval:0.5 target:self selector:@selector(shuffleEvent) userInfo:nil repeats:YES];
+        self.shuffleTimer = [NSTimer scheduledTimerWithTimeInterval:0.5
+                                                             target:self
+                                                           selector:@selector(shuffleEvent)
+                                                           userInfo:nil
+                                                            repeats:YES];
     }
     
     self.isGameRunning = true;
     
-    //Create an immutable version to send to controller
-    NSArray *tileVariants = [NSArray arrayWithArray:self.tiles];
-    
     //Notify controller of model updates
-    [self notifyControllerOfUpdate:GameEventCurrentColor withObject:[NSNumber numberWithInt:self.currentTileVariant]];
-    [self notifyControllerOfUpdate:GameEventInitTiles withObject:tileVariants];
+    [self notifyControllerOfUpdate:GameEventNewTileVariant withObject:[NSNumber numberWithInt:self.currentTileVariant]];
+    [self notifyControllerOfUpdate:GameEventTilesReady withObject:self.immutableTiles];
     [self notifyControllerOfUpdate:GameEventStart withObject:@"Stop"];
 }
 
@@ -141,9 +175,11 @@
 {
     for (int i = 0; i < kTapGameNrOfTiles; ++i) {
         NSInteger remainingCount = kTapGameNrOfTiles - i;
-        NSInteger exchangeIndex = i + arc4random_uniform((u_int32_t )remainingCount);
+        NSInteger exchangeIndex = i + arc4random_uniform((u_int32_t)remainingCount);
+        
         JATile *from = self.tiles[i];
         JATile *to = self.tiles[exchangeIndex];
+        
         if (!from.isTapped && !to.isTapped) {
             [self.tiles exchangeObjectAtIndex:i withObjectAtIndex:exchangeIndex];
         }
@@ -163,15 +199,14 @@
 - (void) clockEvent
 {
     self.elapsedTime += 1;
-    [self notifyControllerOfUpdate:GameEventTime withObject:[self displayTime:self.elapsedTime]];
+    [self notifyControllerOfUpdate:GameEventTimeTick withObject:[self displayTime:self.elapsedTime]];
 }
 
 //Reshuffles the buttons already displayed (in game mode hard)
 - (void) shuffleEvent
 {
     [self shuffleTiles];
-    NSArray *tileVariants = [NSArray arrayWithArray:self.tiles];
-    [self notifyControllerOfUpdate:GameEventShuffleTiles withObject:tileVariants];
+    [self notifyControllerOfUpdate:GameEventTilesShuffled withObject:self.immutableTiles];
 }
 
 //Create a string representing the elapsed time
@@ -180,6 +215,7 @@
     int minutes = time / (10 * 60);
     int seconds = (time / 10) % 60;
     int tenthsOfSecond = time % 10;
+    
     return [NSString stringWithFormat:@"%01d:%02d:%1d", minutes, seconds, tenthsOfSecond];
 }
 
