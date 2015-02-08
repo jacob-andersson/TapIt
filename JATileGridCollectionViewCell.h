@@ -10,7 +10,6 @@
 
 @interface JATileGridCollectionViewCell : UICollectionViewCell
 
-- (void) setDefaultGradient;
-- (void) updateGradientWithStartColor:(UIColor *) startColor andEndColor:(UIColor *) endColor;
+- (void) applyGradientWithColors:(NSArray *) gradientColors;
 
 @end

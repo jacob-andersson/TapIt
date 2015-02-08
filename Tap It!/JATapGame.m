@@ -16,10 +16,10 @@
 @property (nonatomic, strong) NSTimer *gameTimer;
 @property (nonatomic, strong) NSTimer *shuffleTimer;
 @property (nonatomic) GameMode activeGameMode;
+@property (nonatomic) TileVariant currentTileVariant;
 @property (nonatomic) BOOL isGameRunning;
 @property (nonatomic) int currentHighScore;
 @property (nonatomic) int elapsedTime;
-@property (nonatomic) int currentTileVariant;
 @property (nonatomic) int nrOfTappedTiles;
 
 @end
@@ -51,8 +51,8 @@
         
         //Only do something if a button with correct color was pressed
         JATile * tile = [self.tiles objectAtIndex:index];
-        if (self.currentTileVariant == tile.variant.intValue && tile.variant.intValue != -1) {
-            tile.variant = [NSNumber numberWithInt:-1];
+        if (self.currentTileVariant == tile.variant && !tile.isTapped) {
+            tile.variant = TileVariantTapped;
             self.nrOfTappedTiles += 1;
             [self notifyControllerOfUpdate:GameEventDisableButton withObject:[NSNumber numberWithInteger:index]];
             
@@ -92,7 +92,7 @@
     [self.tiles removeAllObjects];
     for (int i = 0; i < kTapGameNrOfTiles; i++) {
         JATile * tile = [JATile new];
-        tile.variant = [NSNumber numberWithInt:i%3];
+        tile.variant = i%kTapGameNrOfTileVariants;
         [self.tiles addObject:tile];
     }
 }
@@ -142,9 +142,9 @@
     for (int i = 0; i < kTapGameNrOfTiles; ++i) {
         NSInteger remainingCount = kTapGameNrOfTiles - i;
         NSInteger exchangeIndex = i + arc4random_uniform((u_int32_t )remainingCount);
-        JATile *from = [self.tiles objectAtIndex:i];
-        JATile *to = [self.tiles objectAtIndex:exchangeIndex];
-        if (from.variant.intValue != -1 && to.variant.intValue != -1) {
+        JATile *from = self.tiles[i];
+        JATile *to = self.tiles[exchangeIndex];
+        if (!from.isTapped && !to.isTapped) {
             [self.tiles exchangeObjectAtIndex:i withObjectAtIndex:exchangeIndex];
         }
     }

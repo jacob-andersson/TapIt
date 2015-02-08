@@ -15,6 +15,7 @@
 		16A1EF631A8656620071D6C7 /* JATapGame.m in Sources */ = {isa = PBXBuildFile; fileRef = 16A1EF621A8656620071D6C7 /* JATapGame.m */; };
 		16A1EF981A8693BA0071D6C7 /* JATileGridCollectionViewCell.m in Sources */ = {isa = PBXBuildFile; fileRef = 16A1EF971A8693BA0071D6C7 /* JATileGridCollectionViewCell.m */; };
 		16A1EF9B1A870DA90071D6C7 /* JATile.m in Sources */ = {isa = PBXBuildFile; fileRef = 16A1EF9A1A870DA90071D6C7 /* JATile.m */; };
+		16A1EFA41A87EA230071D6C7 /* UIColor+TapIt.m in Sources */ = {isa = PBXBuildFile; fileRef = 16A1EFA31A87EA230071D6C7 /* UIColor+TapIt.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -45,6 +46,8 @@
 		16A1EF971A8693BA0071D6C7 /* JATileGridCollectionViewCell.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = JATileGridCollectionViewCell.m; path = ../JATileGridCollectionViewCell.m; sourceTree = "<group>"; };
 		16A1EF991A870DA90071D6C7 /* JATile.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = JATile.h; sourceTree = "<group>"; };
 		16A1EF9A1A870DA90071D6C7 /* JATile.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = JATile.m; sourceTree = "<group>"; };
+		16A1EFA21A87EA230071D6C7 /* UIColor+TapIt.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "UIColor+TapIt.h"; sourceTree = "<group>"; };
+		16A1EFA31A87EA230071D6C7 /* UIColor+TapIt.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = "UIColor+TapIt.m"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -96,6 +99,8 @@
 				16A1EF621A8656620071D6C7 /* JATapGame.m */,
 				16A1EF991A870DA90071D6C7 /* JATile.h */,
 				16A1EF9A1A870DA90071D6C7 /* JATile.m */,
+				16A1EFA21A87EA230071D6C7 /* UIColor+TapIt.h */,
+				16A1EFA31A87EA230071D6C7 /* UIColor+TapIt.m */,
 				16487FAA1A86521100335BD9 /* Images.xcassets */,
 				16487F9D1A86521100335BD9 /* Supporting Files */,
 			);
@@ -227,6 +232,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				16A1EFA41A87EA230071D6C7 /* UIColor+TapIt.m in Sources */,
 				16A1EF9B1A870DA90071D6C7 /* JATile.m in Sources */,
 				16A1EF981A8693BA0071D6C7 /* JATileGridCollectionViewCell.m in Sources */,
 				16A1EF631A8656620071D6C7 /* JATapGame.m in Sources */,

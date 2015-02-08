@@ -10,6 +10,7 @@
 #import "JATapGame.h"
 #import "JATileGridCollectionViewCell.h"
 #import "JATile.h"
+#import "UIColor+TapIt.h"
 
 static NSString * const kCellIdentifier = @"kTileGridCell";
 
@@ -18,7 +19,6 @@ static NSString * const kCellIdentifier = @"kTileGridCell";
 @property (nonatomic, strong) JATapGame *gameModel;
 @property (nonatomic, strong) UICollectionView * tileGrid;
 @property (nonatomic, strong) NSMutableArray * tiles;
-@property (nonatomic, strong) NSArray * tileGradients;
 @property (nonatomic, strong) UIButton *startStopButton;
 @property (nonatomic, strong) UILabel *currentTimeLabel;
 @property (nonatomic, strong) UILabel *highScoreLabel;
@@ -34,7 +34,7 @@ static NSString * const kCellIdentifier = @"kTileGridCell";
 {
     [super viewDidLoad];
     
-    self.view.backgroundColor = [UIColor colorWithRed:40.0/255.0 green:40.0/255.0 blue:45.0/255.0 alpha:1.0];
+    self.view.backgroundColor = [UIColor mainViewBackgroundColor];
     
     //Register as listener (listen to updates from the game model) and create game instance
     [self registerForNotifications];
@@ -43,29 +43,22 @@ static NSString * const kCellIdentifier = @"kTileGridCell";
     self.tiles = [[NSMutableArray alloc] initWithCapacity:kTapGameNrOfTiles];
     for (int i = 0; i < kTapGameNrOfTiles; i++) {
         JATile *tile = [JATile new];
-        tile.variant = [NSNumber numberWithInt:-1];
+        tile.variant = TileVariantTapped;
         [self.tiles addObject:tile];
     }
     
-    self.tileGradients = @[[UIColor colorWithRed:160.0/255.0 green:80.0/255.0 blue:120.0/255.0 alpha:1.0],
-                           [UIColor colorWithRed:110.0/255.0 green:55.0/255.0 blue:85.0/255.0 alpha:1.0],
-                           [UIColor colorWithRed:200.0/255.0 green:160.0/255.0 blue:95.0/255.0 alpha:1.0],
-                           [UIColor colorWithRed:145.0/255.0 green:115.0/255.0 blue:70.0/255.0 alpha:1.0],
-                           [UIColor colorWithRed:190.0/255.0 green:105.0/255.0 blue:90.0/255.0 alpha:1.0],
-                           [UIColor colorWithRed:140.0/255.0 green:80.0/255.0 blue:75.0/255.0 alpha:1.0]];
-    
     UIView *topPanel = [UIView new];
     topPanel.translatesAutoresizingMaskIntoConstraints = false;
-    topPanel.backgroundColor = [UIColor colorWithRed:40.0/255.0 green:40.0/255.0 blue:45.0/255.0 alpha:0.5];
+    topPanel.backgroundColor = [UIColor topPanelBackgroundColor];
     
     UILabel *timeLabel = [UILabel new];
     timeLabel.translatesAutoresizingMaskIntoConstraints = false;
-    timeLabel.textColor = [UIColor colorWithRed:225.0/255.0 green:180.0/255.0 blue:100.0/255.0 alpha:1.0];
+    timeLabel.textColor = [UIColor yellowTextColor];
     timeLabel.text = @"Time: ";
     
     self.currentTimeLabel = [UILabel new];
     self.currentTimeLabel.translatesAutoresizingMaskIntoConstraints = false;
-    self.currentTimeLabel.textColor = [UIColor colorWithRed:225.0/255.0 green:180.0/255.0 blue:100.0/255.0 alpha:1.0];
+    self.currentTimeLabel.textColor = [UIColor yellowTextColor];
     
     self.tapColorView = [UIView new];
     self.tapColorView.translatesAutoresizingMaskIntoConstraints = false;
@@ -75,16 +68,12 @@ static NSString * const kCellIdentifier = @"kTileGridCell";
     self.tapColorView.layer.masksToBounds = YES;
     
     self.tapColorGradient = [CAGradientLayer layer];
-    self.tapColorGradient.colors = @[(id)[UIColor colorWithRed:0.3 green:0.3 blue:0.3 alpha:1.0].CGColor,
-                                     (id)[UIColor colorWithRed:0.15 green:0.15 blue:0.15 alpha:1.0].CGColor];
+    self.tapColorGradient.colors = [JATile gradientColorsForTileVariant:TileVariantTapped];
     [self.tapColorView.layer addSublayer:self.tapColorGradient];
     
     UIView *gridPanel = [UIView new];
     gridPanel.translatesAutoresizingMaskIntoConstraints = false;
-    CAGradientLayer *topShadow = [CAGradientLayer layer];
-    topShadow.frame = CGRectMake(0, 0, self.view.bounds.size.width, 10);
-    topShadow.colors = @[(id)[UIColor colorWithWhite:0.0 alpha:0.25f].CGColor, (id)[UIColor clearColor].CGColor];
-    [gridPanel.layer insertSublayer:topShadow atIndex:0];
+    [gridPanel.layer insertSublayer:[JAMainViewController shadowGradientForFrame:self.view.bounds] atIndex:0];
     
     UICollectionViewFlowLayout * flowLayout = [[UICollectionViewFlowLayout alloc] init];
     flowLayout.itemSize = CGSizeMake(90.0, 90.0);
@@ -102,21 +91,18 @@ static NSString * const kCellIdentifier = @"kTileGridCell";
     
     UIView *bottomPanel = [UIView new];
     bottomPanel.translatesAutoresizingMaskIntoConstraints = false;
-    bottomPanel.backgroundColor = [UIColor colorWithRed:35.0/255.0 green:35.0/255.0 blue:40.0/255.0 alpha:1.0];
-    topShadow = [CAGradientLayer layer];
-    topShadow.frame = CGRectMake(0, 0, self.view.bounds.size.width, 10);
-    topShadow.colors = @[(id)[UIColor colorWithWhite:0.0 alpha:0.25f].CGColor, (id)[UIColor clearColor].CGColor];
-    [bottomPanel.layer addSublayer:topShadow];
+    bottomPanel.backgroundColor = [UIColor bottomPanelBackgroundColor];
+    [bottomPanel.layer addSublayer:[JAMainViewController shadowGradientForFrame:self.view.bounds]];
     
     self.gameModePicker = [[UISegmentedControl alloc] initWithItems:@[@"Newbie", @"Pro"]];
     self.gameModePicker.translatesAutoresizingMaskIntoConstraints = false;
     [self.gameModePicker setSelectedSegmentIndex:0];
     [self.gameModePicker addTarget:self action:@selector(toggleGameMode) forControlEvents:UIControlEventValueChanged];
-    self.gameModePicker.tintColor = [UIColor colorWithRed:225.0/255.0 green:180.0/255.0 blue:100.0/255.0 alpha:1.0];
+    self.gameModePicker.tintColor = [UIColor yellowTextColor];
     
     self.startStopButton = [UIButton new];
     self.startStopButton.translatesAutoresizingMaskIntoConstraints = false;
-    [self.startStopButton setTitleColor:[UIColor colorWithRed:225.0/255.0 green:180.0/255.0 blue:100.0/255.0 alpha:1.0] forState:UIControlStateNormal];
+    [self.startStopButton setTitleColor:[UIColor yellowTextColor] forState:UIControlStateNormal];
     [self.startStopButton setTitle:@"Start" forState:UIControlStateNormal];
     [self.startStopButton.titleLabel setFont:[UIFont fontWithName:@"Helvetica-Bold" size:24]];
     [self.startStopButton addTarget:self action:@selector(toggleGameState) forControlEvents:UIControlEventTouchUpInside];
@@ -184,6 +170,36 @@ static NSString * const kCellIdentifier = @"kTileGridCell";
                                              metrics:nil
                                                views:views]];
     
+    [self.view addConstraints:
+     [NSLayoutConstraint constraintsWithVisualFormat:@"H:|[gridPanel]|"
+                                             options:0
+                                             metrics:nil
+                                               views:views]];
+    
+    [bottomPanel addConstraints:
+     [NSLayoutConstraint constraintsWithVisualFormat:@"H:|[startStopButton]|"
+                                             options:0
+                                             metrics:nil
+                                               views:views]];
+    
+    [bottomPanel addConstraints:
+     [NSLayoutConstraint constraintsWithVisualFormat:@"V:|[startStopButton]|"
+                                             options:0
+                                             metrics:nil
+                                               views:views]];
+    
+    [self.view addConstraints:
+     [NSLayoutConstraint constraintsWithVisualFormat:@"H:|[bottomPanel]|"
+                                             options:0
+                                             metrics:nil
+                                               views:views]];
+    
+    [self.view addConstraints:
+     [NSLayoutConstraint constraintsWithVisualFormat:@"V:|[topPanel][gridPanel][bottomPanel(75)]|"
+                                             options:0
+                                             metrics:nil
+                                               views:views]];
+    
     [gridPanel addConstraint:
      [NSLayoutConstraint constraintWithItem:self.tileGrid
                                   attribute:NSLayoutAttributeHeight
@@ -219,36 +235,6 @@ static NSString * const kCellIdentifier = @"kTileGridCell";
                                   attribute:NSLayoutAttributeCenterY
                                  multiplier:1.0
                                    constant:30]];
-    
-    [self.view addConstraints:
-     [NSLayoutConstraint constraintsWithVisualFormat:@"H:|[gridPanel]|"
-                                             options:0
-                                             metrics:nil
-                                               views:views]];
-    
-    [bottomPanel addConstraints:
-     [NSLayoutConstraint constraintsWithVisualFormat:@"H:|[startStopButton]|"
-                                             options:0
-                                             metrics:nil
-                                               views:views]];
-    
-    [bottomPanel addConstraints:
-     [NSLayoutConstraint constraintsWithVisualFormat:@"V:|[startStopButton]|"
-                                             options:0
-                                             metrics:nil
-                                               views:views]];
-    
-    [self.view addConstraints:
-     [NSLayoutConstraint constraintsWithVisualFormat:@"H:|[bottomPanel]|"
-                                             options:0
-                                             metrics:nil
-                                               views:views]];
-    
-    [self.view addConstraints:
-     [NSLayoutConstraint constraintsWithVisualFormat:@"V:|[topPanel][gridPanel][bottomPanel(75)]|"
-                                             options:0
-                                             metrics:nil
-                                               views:views]];
     
 }
 
@@ -365,15 +351,13 @@ static NSString * const kCellIdentifier = @"kTileGridCell";
 
 - (void) updateCurrentColor:(NSNumber *) tileVariant
 {
-    UIColor *startColor = self.tileGradients[tileVariant.intValue*2];
-    UIColor *endColor = self.tileGradients[(tileVariant.intValue*2)+1];
-    self.tapColorGradient.colors = @[(id)startColor.CGColor, (id)endColor.CGColor];
+    self.tapColorGradient.colors = [JATile gradientColorsForTileVariant:tileVariant.intValue];
 }
 
 - (void) disableButton:(NSNumber *) index
 {
     JATile *tile = self.tiles[index.intValue];
-    tile.variant = [NSNumber numberWithInt:-1];
+    tile.tapped = YES;
     [self.tileGrid reloadItemsAtIndexPaths:@[[NSIndexPath indexPathForItem:index.intValue inSection:0]]];
 }
 
@@ -398,16 +382,8 @@ static NSString * const kCellIdentifier = @"kTileGridCell";
 - (UICollectionViewCell *) collectionView:(UICollectionView *) collectionView cellForItemAtIndexPath:(NSIndexPath *) indexPath
 {
     JATileGridCollectionViewCell *cell = [collectionView dequeueReusableCellWithReuseIdentifier:kCellIdentifier forIndexPath:indexPath];
-    
-    JATile *tile = [self.tiles objectAtIndex:indexPath.item];
-    if (tile.variant.intValue == -1) {
-        [cell setDefaultGradient];
-    } else {
-        int c = tile.variant.intValue;
-        UIColor *startColor = [self.tileGradients objectAtIndex:c*2];
-        UIColor *endColor = [self.tileGradients objectAtIndex:(c*2)+1];
-        [cell updateGradientWithStartColor:startColor andEndColor:endColor];
-    }
+    JATile *tile = self.tiles[indexPath.item];
+    [cell applyGradientWithColors:[JATile gradientColorsForTileVariant:tile.variant]];
     
     return cell;
 }
@@ -415,6 +391,14 @@ static NSString * const kCellIdentifier = @"kTileGridCell";
 - (void) collectionView:(UICollectionView *)collectionView didSelectItemAtIndexPath:(NSIndexPath *)indexPath
 {
     [self.gameModel tileTapped:indexPath.item];
+}
+
++ (CAGradientLayer *) shadowGradientForFrame:(CGRect) frame
+{
+    CAGradientLayer *shadowGradient = [CAGradientLayer layer];
+    shadowGradient.frame = frame;
+    shadowGradient.colors = @[(id)[UIColor colorWithWhite:0.0 alpha:0.25f].CGColor, (id)[UIColor clearColor].CGColor];
+    return shadowGradient;
 }
 
 @end

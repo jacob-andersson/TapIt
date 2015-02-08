@@ -10,6 +10,16 @@
 
 @interface JATile : NSObject
 
-@property (nonatomic, strong) NSNumber * variant;
+typedef NS_ENUM(NSInteger, TileVariant) {
+    TileVariantPurple,
+    TileVariantYellow,
+    TileVariantOrange,
+    TileVariantTapped
+};
+
+@property (nonatomic) TileVariant variant;
+@property (nonatomic, getter=isTapped) BOOL tapped;
+
++ (NSArray *) gradientColorsForTileVariant:(TileVariant) variant;
 
 @end
