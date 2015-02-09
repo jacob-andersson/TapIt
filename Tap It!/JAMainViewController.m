@@ -36,10 +36,10 @@ static NSString * const kCellIdentifier = @"kTileGridCell";
     
     self.view.backgroundColor = [UIColor mainViewBackgroundColor];
     
-    //Listen to updates from game model, take care of updates in method modelUpdated
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(modelUpdated:) name:kTapGameUpdateEvent object:nil];
-    
-    self.gameModel = [JATapGame new];
+    self.highScoreLabel = [UILabel new];
+    self.highScoreLabel.translatesAutoresizingMaskIntoConstraints = false;
+    self.highScoreLabel.textColor = [UIColor yellowTextColor];
+    self.highScoreLabel.textAlignment = NSTextAlignmentCenter;
     
     UIView *topPanel = [UIView new];
     topPanel.translatesAutoresizingMaskIntoConstraints = false;
@@ -74,10 +74,22 @@ static NSString * const kCellIdentifier = @"kTileGridCell";
     self.tileVariantGradient.colors = [JATile gradientColorsForTileVariant:TileVariantTapped];
     [self.tapColorView.layer addSublayer:self.tileVariantGradient];
     
+    self.gameModePicker = [[UISegmentedControl alloc] initWithItems:@[@"Newbie", @"Pro"]];
+    self.gameModePicker.translatesAutoresizingMaskIntoConstraints = false;
+    [self.gameModePicker setSelectedSegmentIndex:0];
+    [self.gameModePicker addTarget:self action:@selector(toggleGameMode) forControlEvents:UIControlEventValueChanged];
+    self.gameModePicker.tintColor = [UIColor yellowTextColor];
+    
+    int screenWidth = [[UIScreen mainScreen] bounds].size.width;
+    int tileSpacing = 10;
+    int sideMargin = 20;
+    int tileSize = (screenWidth - 2*sideMargin - 2*tileSpacing) / 3;
+    int gridWidth = 3*tileSize + 2*tileSpacing;
+    
     UICollectionViewFlowLayout * flowLayout = [[UICollectionViewFlowLayout alloc] init];
-    flowLayout.itemSize = CGSizeMake(90.0, 90.0);
-    flowLayout.minimumInteritemSpacing = 10;
-    flowLayout.minimumLineSpacing = 10;
+    flowLayout.itemSize = CGSizeMake(tileSize, tileSize);
+    flowLayout.minimumInteritemSpacing = tileSpacing;
+    flowLayout.minimumLineSpacing = tileSpacing;
     
     self.tileGrid = [[UICollectionView alloc] initWithFrame:CGRectZero collectionViewLayout:flowLayout];
     [self.tileGrid registerClass:JATileGridCollectionViewCell.class forCellWithReuseIdentifier:kCellIdentifier];
@@ -86,12 +98,6 @@ static NSString * const kCellIdentifier = @"kTileGridCell";
     self.tileGrid.translatesAutoresizingMaskIntoConstraints = false;
     self.tileGrid.backgroundColor = [UIColor clearColor];
     [self.tileGrid.viewForBaselineLayout.layer setSpeed:1.5f];
-    
-    self.gameModePicker = [[UISegmentedControl alloc] initWithItems:@[@"Newbie", @"Pro"]];
-    self.gameModePicker.translatesAutoresizingMaskIntoConstraints = false;
-    [self.gameModePicker setSelectedSegmentIndex:0];
-    [self.gameModePicker addTarget:self action:@selector(toggleGameMode) forControlEvents:UIControlEventValueChanged];
-    self.gameModePicker.tintColor = [UIColor yellowTextColor];
     
     self.startStopButton = [UIButton new];
     self.startStopButton.translatesAutoresizingMaskIntoConstraints = false;
@@ -105,44 +111,57 @@ static NSString * const kCellIdentifier = @"kTileGridCell";
     [topPanel addSubview:self.tapColorView];
     [gridPanel addSubview:self.gameModePicker];
     [gridPanel addSubview:self.tileGrid];
+    [gridPanel addSubview:self.highScoreLabel];
     [bottomPanel addSubview:self.startStopButton];
     
     [self.view addSubview:topPanel];
     [self.view addSubview:gridPanel];
     [self.view addSubview:bottomPanel];
     
+    //Dropping visual support for crappy old iPhones (4/4s) :)
+    //iPads and newer iPhones are however accounted for
+    
+    NSDictionary * metrics = @{@"standardMargin": @(sideMargin),
+                               @"labelWidth": @(50),
+                               @"labelHeight": @(20),
+                               @"topMargin": @(40),
+                               @"currentColorSize": @(20),
+                               @"gameModePickerHeight": @(30),
+                               @"bottomPanelHeight": @(75)};
+
     NSDictionary * views = @{@"topPanel": topPanel,
                              @"gridPanel": gridPanel,
                              @"timeLabel": timeLabel,
                              @"currentTimeLabel": self.currentTimeLabel,
                              @"currentColor": self.tapColorView,
                              @"tileGrid": self.tileGrid,
+                             @"highScoreLabel": self.highScoreLabel,
                              @"bottomPanel": bottomPanel,
                              @"gameModePicker": self.gameModePicker,
                              @"startStopButton": self.startStopButton};
     
     [topPanel addConstraints:
-     [NSLayoutConstraint constraintsWithVisualFormat:@"H:|-30-[timeLabel(50)][currentTimeLabel(50)]-(>=0)-[currentColor(20)]-30-|"
+     [NSLayoutConstraint constraintsWithVisualFormat:@"H:|-(standardMargin)-[timeLabel(labelWidth)][currentTimeLabel(labelWidth)]-(>=0)-[currentColor(currentColorSize)]-(standardMargin)-|"
                                              options:0
-                                             metrics:nil
+                                             metrics:metrics
                                                views:views]];
     
     [topPanel addConstraints:
-     [NSLayoutConstraint constraintsWithVisualFormat:@"V:|-40-[timeLabel(20)]-20-|"
+     [NSLayoutConstraint constraintsWithVisualFormat:@"V:|-(topMargin)-[timeLabel(labelHeight)]-(standardMargin)-|"
                                              options:0
-                                             metrics:nil
+                                             metrics:metrics
                                                views:views]];
     
     [topPanel addConstraints:
-     [NSLayoutConstraint constraintsWithVisualFormat:@"V:|-40-[currentTimeLabel(20)]-20-|"
+     [NSLayoutConstraint constraintsWithVisualFormat:@"V:|-(topMargin)-[currentTimeLabel(labelHeight)]-(standardMargin)-|"
                                              options:0
-                                             metrics:nil
+                                             metrics:metrics
                                                views:views]];
     
     [topPanel addConstraints:
-     [NSLayoutConstraint constraintsWithVisualFormat:@"V:|-40-[currentColor(20)]-20-|"
+     [NSLayoutConstraint constraintsWithVisualFormat:@"V:|-(topMargin)-[currentColor(labelHeight)]-(standardMargin)-|"
                                              options:0
-                                             metrics:nil
+                                             metrics:metrics
                                                views:views]];
     
     [self.view addConstraints:
@@ -152,15 +171,21 @@ static NSString * const kCellIdentifier = @"kTileGridCell";
                                                views:views]];
     
     [gridPanel addConstraints:
-     [NSLayoutConstraint constraintsWithVisualFormat:@"H:|-75-[gameModePicker]-75-|"
+     [NSLayoutConstraint constraintsWithVisualFormat:@"H:|[highScoreLabel]|"
                                              options:0
                                              metrics:nil
                                                views:views]];
     
     [gridPanel addConstraints:
-     [NSLayoutConstraint constraintsWithVisualFormat:@"V:|-30-[gameModePicker(30)]"
+     [NSLayoutConstraint constraintsWithVisualFormat:@"V:|-(standardMargin)-[gameModePicker(gameModePickerHeight)]"
                                              options:0
-                                             metrics:nil
+                                             metrics:metrics
+                                               views:views]];
+    
+    [gridPanel addConstraints:
+     [NSLayoutConstraint constraintsWithVisualFormat:@"V:[highScoreLabel]-(standardMargin)-|"
+                                             options:0
+                                             metrics:metrics
                                                views:views]];
     
     [self.view addConstraints:
@@ -188,10 +213,19 @@ static NSString * const kCellIdentifier = @"kTileGridCell";
                                                views:views]];
     
     [self.view addConstraints:
-     [NSLayoutConstraint constraintsWithVisualFormat:@"V:|[topPanel][gridPanel][bottomPanel(75)]|"
+     [NSLayoutConstraint constraintsWithVisualFormat:@"V:|[topPanel][gridPanel][bottomPanel(bottomPanelHeight)]|"
                                              options:0
-                                             metrics:nil
+                                             metrics:metrics
                                                views:views]];
+    
+    [gridPanel addConstraint:
+     [NSLayoutConstraint constraintWithItem:self.gameModePicker
+                                  attribute:NSLayoutAttributeCenterX
+                                  relatedBy:NSLayoutRelationEqual
+                                     toItem:gridPanel
+                                  attribute:NSLayoutAttributeCenterX
+                                 multiplier:1.0
+                                   constant:0]];
     
     [gridPanel addConstraint:
      [NSLayoutConstraint constraintWithItem:self.tileGrid
@@ -200,7 +234,7 @@ static NSString * const kCellIdentifier = @"kTileGridCell";
                                      toItem:nil
                                   attribute:NSLayoutAttributeNotAnAttribute
                                  multiplier:1.0
-                                   constant:290]];
+                                   constant:gridWidth]];
     
     [gridPanel addConstraint:
      [NSLayoutConstraint constraintWithItem:self.tileGrid
@@ -209,7 +243,7 @@ static NSString * const kCellIdentifier = @"kTileGridCell";
                                      toItem:nil
                                   attribute:NSLayoutAttributeNotAnAttribute
                                  multiplier:1.0
-                                   constant:290]];
+                                   constant:gridWidth]];
     
     [gridPanel addConstraint:
      [NSLayoutConstraint constraintWithItem:self.tileGrid
@@ -227,7 +261,11 @@ static NSString * const kCellIdentifier = @"kTileGridCell";
                                      toItem:gridPanel
                                   attribute:NSLayoutAttributeCenterY
                                  multiplier:1.0
-                                   constant:30]];
+                                   constant:5]];
+    
+    //Listen to updates from game model, take care of updates in method modelUpdated
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(modelUpdated:) name:kTapGameUpdateEvent object:nil];
+    self.gameModel = [JATapGame new];
 }
 
 - (void) viewDidAppear:(BOOL)animated
@@ -277,7 +315,7 @@ static NSString * const kCellIdentifier = @"kTileGridCell";
     
     //Iterate over all keys in the NSDictionary sent by the game model
     while ((key = [enumerator nextObject])) {
-        id message = [info objectForKey:key];
+        id message = info[key];
         
         //Update view depending on the UpdateEvent that has occured
         switch ((GameEvent)[key intValue]) {
@@ -320,7 +358,7 @@ static NSString * const kCellIdentifier = @"kTileGridCell";
 
 - (void) updateHighScore:(NSString *) highScore alert:(BOOL) alert
 {
-    self.highScoreLabel.text = highScore;
+    self.highScoreLabel.text = [NSString stringWithFormat:@"High score: %@", highScore];
     
     if (alert) {
         [[[UIAlertView alloc] initWithTitle:@"^^"
@@ -399,6 +437,7 @@ static NSString * const kCellIdentifier = @"kTileGridCell";
     CAGradientLayer *shadowGradient = [CAGradientLayer layer];
     shadowGradient.frame = CGRectMake(0, 0, frame.size.width, 10);
     shadowGradient.colors = @[(id)[UIColor colorWithWhite:0.0 alpha:0.25f].CGColor, (id)[UIColor clearColor].CGColor];
+    
     return shadowGradient;
 }
 

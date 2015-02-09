@@ -20,7 +20,7 @@ typedef NS_ENUM(NSInteger, TileVariant) {
 @property (nonatomic) TileVariant variant;
 @property (nonatomic, getter=isTapped) BOOL tapped;
 
-- (instancetype) initTileWithVariant:(TileVariant) variant;
+- (instancetype) initTileWithVariant:(TileVariant) variant NS_DESIGNATED_INITIALIZER;
 
 + (NSArray *) gradientColorsForTileVariant:(TileVariant) variant;
 

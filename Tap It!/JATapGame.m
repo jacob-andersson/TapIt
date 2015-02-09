@@ -17,8 +17,8 @@
 @property (nonatomic, strong) NSTimer *shuffleTimer;
 @property (nonatomic, assign) GameMode activeGameMode;
 @property (nonatomic, assign) TileVariant currentTileVariant;
+@property (nonatomic, assign) NSInteger currentHighScore;
 @property (nonatomic, assign) BOOL isGameRunning;
-@property (nonatomic, assign) int currentHighScore;
 @property (nonatomic, assign) int elapsedTime;
 @property (nonatomic, assign) int nrOfTappedTiles;
 
@@ -62,7 +62,7 @@
             self.nrOfTappedTiles += 1;
             
             //Valid tap updated model, time to propagate the update
-            [self notifyControllerOfUpdate:GameEventTileTapped withObject:[NSNumber numberWithInteger:index]];
+            [self notifyControllerOfUpdate:GameEventTileTapped withObject:@(index)];
             
             //End game and check highscore if the last button of the correct color was pressed
             if (self.nrOfTappedTiles == kTapGameNrOfTileVariants) {
@@ -102,10 +102,15 @@
     return nil;
 }
 
-- (int) currentHighScore
+- (NSInteger) currentHighScore
 {
-    //TODO: read from NSUserDefault using activeGameMode as key
-    return 0;
+    return [[NSUserDefaults standardUserDefaults] integerForKey:[self gameModeDisplayName]];
+}
+
+- (void) setCurrentHighScore:(NSInteger) currentHighScore
+{
+    [[NSUserDefaults standardUserDefaults] setInteger:currentHighScore forKey:[self gameModeDisplayName]];
+    [[NSUserDefaults standardUserDefaults] synchronize];
 }
 
 - (void) initPlaceholderTiles
@@ -149,10 +154,11 @@
     
     self.isGameRunning = true;
     
-    //Notify controller of model updates
-    [self notifyControllerOfUpdate:GameEventNewTileVariant withObject:[NSNumber numberWithInt:self.currentTileVariant]];
-    [self notifyControllerOfUpdate:GameEventTilesReady withObject:self.immutableTiles];
-    [self notifyControllerOfUpdate:GameEventStart withObject:@"Stop"];
+    NSDictionary *updates = @{@(GameEventNewTileVariant): @(self.currentTileVariant),
+                              @(GameEventTilesReady): self.immutableTiles,
+                              @(GameEventStart): @"Stop"};
+    
+    [self notifyControllerOfUpdates:updates];
 }
 
 - (void) stopGame
@@ -190,7 +196,6 @@
 - (void) checkHighScore:(int) gameTime
 {
     if (gameTime < self.currentHighScore || self.currentHighScore == 0) {
-        //TODO: Fix custom setter and save to NSUserDefaults
         self.currentHighScore = gameTime;
         [self notifyControllerOfUpdate:GameEventNewHighScore withObject:[self displayTime:self.currentHighScore]];
     }
@@ -210,22 +215,39 @@
 }
 
 //Create a string representing the elapsed time
-- (NSString *) displayTime:(int) time
+- (NSString *) displayTime:(NSInteger) time
 {
-    int minutes = time / (10 * 60);
-    int seconds = (time / 10) % 60;
-    int tenthsOfSecond = time % 10;
+    NSInteger minutes = time / (10 * 60);
+    NSInteger seconds = (time / 10) % 60;
+    NSInteger tenthsOfSecond = time % 10;
     
-    return [NSString stringWithFormat:@"%01d:%02d:%1d", minutes, seconds, tenthsOfSecond];
+    return [NSString stringWithFormat:@"%01ld:%02ld:%1ld", (long)minutes, (long)seconds, (long)tenthsOfSecond];
 }
 
 //Post a notification with updates from game model to the default NSNotificationCenter
 - (void) notifyControllerOfUpdate:(GameEvent) event withObject:(NSObject *) obj
 {
-    NSNumber *evt = [NSNumber numberWithInt:event];
-    NSDictionary *dict = [NSDictionary dictionaryWithObjectsAndKeys: obj, evt, nil];
+    [self notifyControllerOfUpdates:@{@(event): obj}];
+}
+
+- (void) notifyControllerOfUpdates:(NSDictionary *) dict
+{
     NSNotification *note = [NSNotification notificationWithName:kTapGameUpdateEvent object:self userInfo:dict];
     [[NSNotificationCenter defaultCenter] postNotification:note];
+}
+
+
+#pragma mark - Methods to get string representation of GameMode enum values
+
+- (NSString *) gameModeDisplayName
+{
+    return [[self class] gameModeDisplayNames][@(self.activeGameMode)];
+}
+
++ (NSDictionary *) gameModeDisplayNames
+{
+    return @{@(GameModeEasy) : @"GameModeEasy",
+             @(GameModeHard) : @"GameModeHard"};
 }
 
 @end
